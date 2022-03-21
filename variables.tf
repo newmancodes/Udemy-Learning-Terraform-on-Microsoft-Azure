@@ -25,3 +25,11 @@ variable "web_server_name" {
 variable "environment" {
     type = string
 }
+
+variable "web_server_count" {
+    type = number
+}
+
+variable "web_server_subnets" {
+    type = map
+}

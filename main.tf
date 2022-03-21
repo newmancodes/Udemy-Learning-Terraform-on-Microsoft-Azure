@@ -24,21 +24,24 @@ resource "azurerm_virtual_network" "web_server_vnet" {
 }
 
 resource "azurerm_subnet" "web_server_subnet" {
-    name                    = "${var.resource_prefix}-subnet"
+    for_each = var.web_server_subnets
+    name                    = each.key
     resource_group_name     = azurerm_resource_group.web_server_rg.name
     virtual_network_name    = azurerm_virtual_network.web_server_vnet.name
-    address_prefixes        = [var.web_server_address_prefix]
+    address_prefixes        = [each.value]
 }
 
 resource "azurerm_network_interface" "web_server_nic" {
-    name                    = "${var.web_server_name}-nic"
+    name                    = "${var.web_server_name}-${format("%02d", count.index)}-nic"
     location                = var.web_server_location
     resource_group_name     = azurerm_resource_group.web_server_rg.name
+    count                   = var.web_server_count
+
     ip_configuration {
         name                            = "${var.web_server_name}-ip"
-        subnet_id                       = azurerm_subnet.web_server_subnet.id
+        subnet_id                       = azurerm_subnet.web_server_subnet["web-server"].id
         private_ip_address_allocation   = "dynamic"
-        public_ip_address_id            = azurerm_public_ip.web_server_public_ip.id
+        public_ip_address_id            = count.index == 0 ? azurerm_public_ip.web_server_public_ip.id : null
     }
 }
 
@@ -67,18 +70,20 @@ resource "azurerm_network_security_rule" "web_server_nsg_rule_rdp" {
     destination_address_prefix  = "*"
     resource_group_name         = azurerm_resource_group.web_server_rg.name
     network_security_group_name = azurerm_network_security_group.web_server_nsg.name
+    count                       = var.environment == "production" ? 0 : 1
 }
 
-resource "azurerm_network_interface_security_group_association" "web_server_nsg_association" {
-    network_security_group_id = azurerm_network_security_group.web_server_nsg.id
-    network_interface_id = azurerm_network_interface.web_server_nic.id
+resource "azurerm_subnet_network_security_group_association" "web_server_sag" {
+    network_security_group_id   = azurerm_network_security_group.web_server_nsg.id
+    subnet_id                   = azurerm_subnet.web_server_subnet["web-server"].id
 }
 
 resource "azurerm_windows_virtual_machine" "web_server" {
-    name                        = var.web_server_name
+    name                        = "${var.web_server_name}-${format("%02d", count.index)}"
     location                    = var.web_server_location
     resource_group_name         = azurerm_resource_group.web_server_rg.name
-    network_interface_ids       = [azurerm_network_interface.web_server_nic.id]
+    count                       = var.web_server_count
+    network_interface_ids       = [azurerm_network_interface.web_server_nic[count.index].id]
     availability_set_id         = azurerm_availability_set.web_server_availability_set.id
     size                        = "Standard_B1s"
     admin_username              = "webserver"
