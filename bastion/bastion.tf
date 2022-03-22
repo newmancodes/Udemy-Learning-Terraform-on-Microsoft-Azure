@@ -23,7 +23,7 @@ resource "azurerm_resource_group" "bastion_rg" {
 resource "azurerm_public_ip" "bastion_pip" {
     name                = "bastion-ip"
     location            = var.location
-    resource_group_name = var.bastion_rg
+    resource_group_name = azurerm_resource_group.bastion_rg.name
     allocation_method   = "Static"
     sku                 = "Standard"
 }
@@ -31,7 +31,7 @@ resource "azurerm_public_ip" "bastion_pip" {
 resource "azurerm_bastion_host" "bastion_host" {
     name                        = "bastion-host"
     location                    = var.location
-    resource_group_name         = var.bastion_rg
+    resource_group_name         = azurerm_resource_group.bastion_rg.name
 
     ip_configuration {
         name                    = "uksouth"
