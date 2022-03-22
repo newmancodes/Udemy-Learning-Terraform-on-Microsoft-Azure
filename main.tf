@@ -101,6 +101,7 @@ resource "azurerm_windows_virtual_machine_scale_set" "web_server" {
     location                                        = var.web_server_location
     resource_group_name                             = azurerm_resource_group.web_server_rg.name
     sku                                             = "Standard_B1s"
+    upgrade_mode                                    = "Automatic"
     instances                                       = var.web_server_count
     admin_username                                  = "webserver"
     admin_password                                  = data.azurerm_key_vault_secret.admin_password.value
@@ -181,4 +182,5 @@ resource "azurerm_lb_rule" "web_server_lb_http_rule" {
     backend_port                    = "80"
     frontend_ip_configuration_name  = "${var.resource_prefix}-lb-frontend-ip"
     probe_id                        = azurerm_lb_probe.web_server_lb_http_probe.id
+    backend_address_pool_ids        = [azurerm_lb_backend_address_pool.web_server_lb_backend_pool.id]
 }
