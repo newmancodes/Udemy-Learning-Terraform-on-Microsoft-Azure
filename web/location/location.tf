@@ -1,16 +1,3 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "=2.99.0"
-    }
-  }
-}
-
-provider "azurerm" {
-    features {}
-}
-
 locals {
     web_server_name = var.environment == "production" ? "${var.web_server_name}-prd" : "${var.web_server_name}-dev"
     build_environment = var.environment == "production" ? "production" : "development"
@@ -46,6 +33,7 @@ resource "azurerm_public_ip" "web_server_lb_public_ip" {
     location            = var.web_server_location
     resource_group_name = azurerm_resource_group.web_server_rg.name
     allocation_method   = var.environment == "production" ? "Static" : "Dynamic"
+    domain_name_label   = var.domain_name_label
 }
 
 resource "azurerm_network_security_group" "web_server_nsg" {
@@ -88,8 +76,15 @@ resource "azurerm_subnet_network_security_group_association" "web_server_sag" {
     subnet_id                   = azurerm_subnet.web_server_subnet["web-server"].id
 }
 
+resource "random_string" "random" {
+    length  = 10
+    upper   = false
+    special = false
+    number  = false
+}
+
 resource "azurerm_storage_account" "storage_account" {
-    name                        = "ltfbootdiagnosticssn"
+    name                        = "ltfbootdiags${random_string.random.result}"
     location                    = var.web_server_location
     resource_group_name         = azurerm_resource_group.web_server_rg.name
     account_tier                = "Standard"
@@ -104,7 +99,7 @@ resource "azurerm_windows_virtual_machine_scale_set" "web_server" {
     upgrade_mode                                    = "Automatic"
     instances                                       = var.web_server_count
     admin_username                                  = "webserver"
-    admin_password                                  = data.azurerm_key_vault_secret.admin_password.value
+    admin_password                                  = var.admin_password
 
     source_image_reference {
         publisher                                   = "MicrosoftWindowsServer"
